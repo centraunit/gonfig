@@ -238,13 +238,17 @@ config.Refresh()
 
 ## Custom Configuration Loaders
 
+Create custom configuration loaders with environment variable support:
+
 ```go
 config.Register("custom", func(registry contracts.ConfigRegistry) map[string]interface{} {
     return map[string]interface{}{
         "settings": map[string]interface{}{
-            "value": "test",
+            "value": registry.GetEnvString("CUSTOM_VALUE", "default"),
             "nested": map[string]interface{}{
-                "key": "value",
+                "key": registry.GetEnvString("CUSTOM_NESTED_KEY", "default"),
+                "number": registry.GetEnvInt("CUSTOM_NUMBER", 42),
+                "enabled": registry.GetEnvBool("CUSTOM_ENABLED", false),
             },
         },
     }
@@ -253,6 +257,18 @@ config.Register("custom", func(registry contracts.ConfigRegistry) map[string]int
 // Access custom config
 value, err := config.GetString("custom.settings.value")
 ```
+
+The registry provides type-safe methods to access environment variables within your configuration loaders:
+- `GetEnvString(key, defaultValue string) string`
+- `GetEnvInt(key string, defaultValue int) int`
+- `GetEnvBool(key string, defaultValue bool) bool`
+- `GetEnvStringArray(key string, defaultValue []string) []string`
+
+This allows you to:
+- Access environment variables within your configuration loaders
+- Provide default values if environment variables are not set
+- Keep all configuration logic in one place
+- Maintain type safety with environment variables
 
 ## Implementation Details
 
