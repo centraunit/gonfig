@@ -39,13 +39,13 @@ A high-performance configuration management library for Go with support for envi
 
 ## Features
 
-- Dot notation path access (e.g., "database.host")
+- Dot notation path access (e.g., "app.database.host")
 - Type-safe configuration access
 - Environment variable support with defaults
 - Schema validation
 - Multiple configuration loaders
-- High-performance path caching
-- Thread-safe operations
+- High-performance path caching for optimized dot notation access
+- Thread-safe singleton registry
 - Automatic type conversion
 - Default value support
 
@@ -254,18 +254,33 @@ config.Register("custom", func(registry contracts.ConfigRegistry) map[string]int
 value, err := config.GetString("custom.settings.value")
 ```
 
+## Implementation Details
+
+### Singleton Pattern
+GoNfig uses a singleton pattern - `GetConfigRegistry("environment")` returns the same instance for the same environment. This ensures configuration consistency across your application.
+
+### Path Caching
+GoNfig implements an internal path cache to optimize dot notation access. When you access paths like "app.database.host", the path is parsed once and cached for subsequent accesses, improving performance.
+
 ## Thread Safety
 
 All operations in GoNfig are thread-safe and can be used in concurrent environments:
 
 ```go
 go func() {
-    value, _ := config.GetString("key")
+    value, err := config.GetString("app.settings.key")
+    if err != nil {
+        log.Printf("Error: %v", err)
+        return
+    }
     // Use value
 }()
 
 go func() {
-    config.Set("key", "new value")
+    err := config.Set("app.settings.key", "new value")
+    if err != nil {
+        log.Printf("Error: %v", err)
+    }
 }()
 ```
 
