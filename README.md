@@ -37,6 +37,8 @@ A high-performance configuration management library for Go with support for envi
 | Set Deep | 308.4 | 87 | 1 |
 | Refresh | 2434 | 2832 | 20 |
 
+> Note: These are example benchmark results and may vary based on your system and Go version. The benchmarks demonstrate the high performance of GoNfig's operations, with most operations taking less than 200 nanoseconds.
+
 ## Features
 
 - Dot notation path access (e.g., "app.database.host")
@@ -70,7 +72,7 @@ import (
 
 func main() {
     // Initialize the config registry with environment
-    // Supported environments: "development", "staging", "production", "testing"
+    // Environment must be one of: "development", "staging", "production", or "testing"
     config, err := gonfig.GetConfigRegistry("development")
     if err != nil {
         log.Fatal(err)
@@ -115,6 +117,12 @@ GoNfig automatically loads environment files based on the environment:
 - `.env` file for "development", "staging", or "production" environments
 - `.env.testing` file for "testing" environment
 
+The environment parameter in `GetConfigRegistry` must be one of:
+- "development"
+- "staging"
+- "production"
+- "testing"
+
 ## Configuration Schema
 
 ```go
@@ -158,7 +166,7 @@ func main() {
     })
 
     // Validate configuration
-    err = schema.Validate(config.GetAll())
+    err = schema.Validate(config.Get("app").(map[string]interface{}))
     if err != nil {
         log.Fatal(err)
     }
@@ -186,25 +194,23 @@ allowedHosts := config.GetEnvStringArray("ALLOWED_HOSTS", []string{"localhost"})
 ## Type-Safe Configuration Access
 
 ```go
-// String access
-host, err := config.GetString("app.database.host")
-hostWithDefault, err := config.GetString("app.database.host", "localhost")
+// String access with default
+host, err := config.GetString("app.database.host", "localhost")
 
-// Integer access
-port, err := config.GetInt("app.database.port")
-portWithDefault, err := config.GetInt("app.database.port", 5432)
+// Integer access with default
+port, err := config.GetInt("app.database.port", 5432)
 
-// Boolean access
-enabled, err := config.GetBool("app.feature.enabled")
-enabledWithDefault, err := config.GetBool("app.feature.enabled", false)
+// Boolean access with default
+enabled, err := config.GetBool("app.feature.enabled", false)
 
-// Float access
-timeout, err := config.GetFloat("app.api.timeout")
-timeoutWithDefault, err := config.GetFloat("app.api.timeout", 30.0)
+// Float access with default
+timeout, err := config.GetFloat("app.api.timeout", 30.0)
 
-// String array access
-hosts, err := config.GetStringArray("app.allowed.hosts")
-hostsWithDefault, err := config.GetStringArray("app.allowed.hosts", []string{"localhost"})
+// String array access with default
+hosts, err := config.GetStringArray("app.allowed.hosts", []string{"localhost"})
+
+// Get raw value (no default support)
+value, err := config.Get("app.settings.key")
 ```
 
 ## Struct Unmarshaling
@@ -213,10 +219,14 @@ Unmarshal configuration sections into structs:
 
 ```go
 type DatabaseConfig struct {
-    Host     string `config:"host"`
-    Port     int    `config:"port"`
-    Username string `config:"credentials.username"`
-    Password string `config:"credentials.password"`
+    Host     string   `config:"host"`                    // String field
+    Port     int      `config:"port"`                    // Integer field
+    Username string   `config:"credentials.username"`     // Nested field access
+    Password string   `config:"credentials.password"`     // Nested field access
+    Enabled  bool     `config:"enabled"`                 // Boolean field
+    Timeout  float64  `config:"timeout"`                 // Float field
+    Hosts    []string `config:"allowed_hosts"`           // String array field
+    Ignored  string   `config:"-"`                       // Ignored field
 }
 
 var dbConfig DatabaseConfig
@@ -225,6 +235,20 @@ if err != nil {
     log.Fatal(err)
 }
 ```
+
+Supported field types:
+- `string`
+- `int`, `int8`, `int16`, `int32`, `int64`
+- `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+- `float32`, `float64`
+- `bool`
+- `[]string` (string arrays)
+- Nested structs (must be maps in the configuration)
+
+Struct tags:
+- `config:"field_name"` - Specifies the configuration field name
+- `config:"-"` - Ignores the field during unmarshaling
+- `required:"true"` - Makes the field required (will return error if missing)
 
 ## Dynamic Configuration Updates
 
